@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Scraper Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --card: #21253a;
+    --border: rgba(255,255,255,0.08); --accent: #4f8ef7;
+    --green: #34c98a; --red: #f75f5f; --yellow: #f7c94f;
+    --text: #e8eaf0; --muted: #8a8fa8;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; }
+  .brand-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: blink 1.4s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: rgba(79,142,247,.15); color: var(--accent); border: 1px solid rgba(79,142,247,.3); }
+  .main { padding: 24px 28px; max-width: 1200px; margin: 0 auto; }
+  .metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+  .metric { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .metric-value { font-size: 26px; font-weight: 600; }
+  .metric-sub { font-size: 11px; margin-top: 4px; }
+  .green { color: var(--green); } .red { color: var(--red); } .yellow { color: var(--yellow); } .blue { color: var(--accent); }
+  .grid2 { display: grid; grid-template-columns: 1fr 380px; gap: 18px; margin-bottom: 18px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .card-head { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { font-size: 11px; color: var(--muted); font-weight: 500; text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,.04); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.03); }
+  .pill { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+  .pill-green { background: rgba(52,201,138,.15); color: var(--green); }
+  .pill-red   { background: rgba(247,95,95,.15);  color: var(--red); }
+  .pill-yellow{ background: rgba(247,201,79,.15); color: var(--yellow); }
+  .pill-blue  { background: rgba(79,142,247,.15); color: var(--accent); }
+  .progress-wrap { background: rgba(255,255,255,.06); border-radius: 4px; height: 4px; margin-top: 6px; }
+  .progress-bar { height: 4px; border-radius: 4px; }
+  .job-item { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+  .job-item:last-child { border-bottom: none; }
+  .job-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .job-meta { display: flex; gap: 10px; font-size: 11px; color: var(--muted); align-items: center; flex-wrap: wrap; }
+  .log-item { font-size: 12px; font-family: monospace; padding: 5px 0; color: var(--muted); border-bottom: 1px solid rgba(255,255,255,.03); display: flex; gap: 10px; }
+  .log-time { color: rgba(255,255,255,.25); min-width: 55px; }
+  .log-ok { color: var(--green); } .log-err { color: var(--red); } .log-info { color: var(--accent); }
+  input, select { background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 13px; outline: none; }
+  input:focus, select:focus { border-color: var(--accent); }
+  button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; cursor: pointer; font-weight: 500; transition: opacity .15s; }
+  button:hover { opacity: .85; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .controls { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } .metrics { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-dot"></div>
+    ScraperPro Dashboard
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <span class="badge">Live</span>
+    <span style="font-size:12px;color:var(--muted)" id="clock"></span>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Pages scraped</div>
+      <div class="metric-value blue" id="m-pages">0</div>
+      <div class="metric-sub green">+12 this hour</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Data points</div>
+      <div class="metric-value green" id="m-points">0</div>
+      <div class="metric-sub green">+340 today</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Success rate</div>
+      <div class="metric-value" id="m-rate">0%</div>
+      <div class="metric-sub green">Above target</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Avg. response</div>
+      <div class="metric-value yellow" id="m-speed">0ms</div>
+      <div class="metric-sub muted">Last 100 requests</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-head">Scraped data — latest results</div>
+      <div class="controls">
+        <input type="text" placeholder="Search..." style="flex:1;min-width:120px">
+        <select>
+          <option>All sources</option>
+          <option>Yahoo Finance</option>
+          <option>Reuters</option>
+          <option>Bloomberg</option>
+        </select>
+        <button onclick="addRow()">+ Add job</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Sentiment</th>
+            <th>Scraped</th>
+          </tr>
+        </thead>
+        <tbody id="data-table"></tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div class="card">
+        <div class="card-head">Active scraper jobs</div>
+        <div id="jobs"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">Activity log</div>
+        <div id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">Source performance</div>
+    <div id="sources" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:4px;"></div>
+  </div>
+
+</div>
+
+<script>
+const rows = [
+  {source:"Yahoo Finance", title:"Apple beats Q1 estimates by 8%", cat:"Earnings", sentiment:"Bullish", time:"2m ago"},
+  {source:"Reuters",       title:"Fed holds rates, signals caution", cat:"Macro",    sentiment:"Bearish", time:"8m ago"},
+  {source:"Bloomberg",     title:"NVIDIA GPU demand surges in Asia", cat:"Tech",     sentiment:"Bullish", time:"15m ago"},
+  {source:"CNBC",          title:"Tesla delivery miss, shares fall", cat:"Autos",    sentiment:"Bearish", time:"22m ago"},
+  {source:"FT",            title:"Microsoft Azure grows 33% YoY",   cat:"Cloud",    sentiment:"Bullish", time:"31m ago"},
+  {source:"WSJ",           title:"Oil drops 3% on weak demand data", cat:"Energy",   sentiment:"Bearish", time:"45m ago"},
+  {source:"Yahoo Finance", title:"Amazon logistics expansion plan",  cat:"E-comm",   sentiment:"Neutral",  time:"1h ago"},
+];
+
+const sentimentClass = {Bullish:"pill-green", Bearish:"pill-red", Neutral:"pill-yellow"};
+
+function renderTable() {
+  const tbody = document.getElementById("data-table");
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><span class="pill pill-blue">${r.source}</span></td>
+      <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.title}</td>
+      <td><span class="pill pill-yellow">${r.cat}</span></td>
+      <td><span class="pill ${sentimentClass[r.sentiment]}">${r.sentiment}</span></td>
+      <td style="color:var(--muted)">${r.time}</td>
+    </tr>`).join("");
+}
+
+const jobs = [
+  {name:"Yahoo Finance RSS",  status:"Running",  pct:100, color:"#34c98a"},
+  {name:"Reuters headlines",  status:"Running",  pct:100, color:"#34c98a"},
+  {name:"Bloomberg markets",  status:"Paused",   pct:60,  color:"#f7c94f"},
+  {name:"CNBC breaking news", status:"Running",  pct:100, color:"#34c98a"},
+  {name:"FT economy section", status:"Error",    pct:20,  color:"#f75f5f"},
+];
+
+function renderJobs() {
+  document.getElementById("jobs").innerHTML = jobs.map(j => `
+    <div class="job-item">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div class="job-title">${j.name}</div>
+        <span class="pill ${j.status==="Running"?"pill-green":j.status==="Paused"?"pill-yellow":"pill-red"}">${j.status}</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" style="width:${j.pct}%;background:${j.color}"></div></div>
+    </div>`).join("");
+}
+
+const logs = [
+  {time:"12:04", type:"ok",   msg:"Fetched 12 articles from Yahoo"},
+  {time:"12:03", type:"ok",   msg:"Sentiment scored: BULLISH (0.82)"},
+  {time:"12:02", type:"err",  msg:"FT.com timeout after 10s"},
+  {time:"12:01", type:"info", msg:"Job started: Bloomberg markets"},
+  {time:"11:59", type:"ok",   msg:"Exported 340 rows to CSV"},
+  {time:"11:57", type:"info", msg:"Scheduler triggered at 11:57"},
+];
+
+function renderLog() {
+  document.getElementById("log").innerHTML = logs.map(l => `
+    <div class="log-item">
+      <span class="log-time">${l.time}</span>
+      <span class="log-${l.type}">${l.type==="ok"?"✓":l.type==="err"?"✗":"i"}</span>
+      <span>${l.msg}</span>
+    </div>`).join("");
+}
+
+const sources = [
+  {name:"Yahoo Finance", articles:412, rate:98},
+  {name:"Reuters",       articles:318, rate:96},
+  {name:"Bloomberg",     articles:201, rate:87},
+  {name:"CNBC",          articles:175, rate:94},
+  {name:"FT",            articles:89,  rate:61},
+];
+
+function renderSources() {
+  document.getElementById("sources").innerHTML = sources.map(s => `
+    <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px;">${s.name}</div>
+      <div style="font-size:22px;font-weight:600;color:var(--accent);">${s.articles}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">articles today</div>
+      <div class="progress-wrap" style="margin-top:8px;">
+        <div class="progress-bar" style="width:${s.rate}%;background:${s.rate>90?"var(--green)":s.rate>70?"var(--yellow)":"var(--red)"}"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">${s.rate}% success rate</div>
+    </div>`).join("");
+}
+
+function addRow() {
+  const newSources = ["MarketWatch","Seeking Alpha","Barron's"];
+  const newTitles  = ["Markets rally on strong jobs data","Fed minutes reveal rate path debate","Tech sector leads gains in broad rally"];
+  const newCats    = ["Macro","Fed","Tech"];
+  const sents      = ["Bullish","Bearish","Neutral"];
+  rows.unshift({
+    source: newSources[Math.floor(Math.random()*3)],
+    title:  newTitles[Math.floor(Math.random()*3)],
+    cat:    newCats[Math.floor(Math.random()*3)],
+    sentiment: sents[Math.floor(Math.random()*3)],
+    time: "just now"
+  });
+  renderTable();
+}
+
+function updateMetrics() {
+  let p = 0, d = 0, r = 0, s = 0;
+  const tp = 2847, td = 18420, tr = 94, ts = 320;
+  const dur = 1200;
+  const interval = 30;
+  const steps = dur / interval;
+  let step = 0;
+  const timer = setInterval(() => {
+    step++;
+    const ratio = step / steps;
+    p = Math.round(tp * ratio);
+    d = Math.round(td * ratio);
+    r = Math.round(tr * ratio);
+    s = Math.round(ts * ratio);
+    document.getElementById("m-pages").textContent  = p.toLocaleString();
+    document.getElementById("m-points").textContent = d.toLocaleString();
+    document.getElementById("m-rate").textContent   = r + "%";
+    document.getElementById("m-speed").textContent  = s + "ms";
+    if (step >= steps) clearInterval(timer);
+  }, interval);
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById("clock").textContent = now.toLocaleTimeString();
+}
+
+renderTable();
+renderJobs();
+renderLog();
+renderSources();
+updateMetrics();
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
